@@ -42,13 +42,17 @@ jobs:
           "exe=$($exe.FullName)" >> $env:GITHUB_OUTPUT
           "dir=$($exe.Directory.FullName)" >> $env:GITHUB_OUTPUT
 
+      - name: Debug Qt
+        shell: cmd
+        run: |
+          echo Qt5_DIR=%Qt5_DIR%
+          where qmake
+          where windeployqt
+    
       - name: Deploy Qt
         shell: powershell
         run: |
-          call "%Qt5_DIR%\bin\qtenv2.bat"
-          windeployqt `
-            --release `
-            --compiler-runtime `
+          windeployqt --release --compiler-runtime `
             "${{ steps.findexe.outputs.exe }}"
 
       - name: Create ZIP
