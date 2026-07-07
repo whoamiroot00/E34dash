@@ -25,9 +25,41 @@ jobs:
           qmake dashmaster.pro
           mingw32-make
 
-      - name: Upload executable
+      - name: Find executable
+        id: findexe
+        shell: powershell
+        run: |
+          $exe = Get-ChildItem -Recurse -Filter *.exe |
+            Where-Object {
+              $_.Name -notmatch "assistant|designer|linguist|qmake|moc|uic|rcc"
+            } |
+            Select-Object -First 1
+
+          if (-not $exe) {
+            throw "Executable not found."
+          }
+
+          "exe=$($exe.FullName)" >> $env:GITHUB_OUTPUT
+          "dir=$($exe.Directory.FullName)" >> $env:GITHUB_OUTPUT
+
+      - name: Deploy Qt
+        shell: powershell
+        run: |
+          windeployqt `
+            --release `
+            --compiler-runtime `
+            "${{ steps.findexe.outputs.exe }}"
+
+      - name: Create ZIP
+        shell: powershell
+        run: |
+          Compress-Archive `
+            -Path "${{ steps.findexe.outputs.dir }}\*" `
+            -DestinationPath E34dash-Windows.zip `
+            -Force
+
+      - name: Upload ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: E34dash
-          path: |
-            **/*.exe
+          name: E34dash-Windows
+          path: E34dash-Windows.zip
