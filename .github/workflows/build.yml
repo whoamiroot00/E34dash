@@ -25,41 +25,52 @@ jobs:
           qmake dashmaster.pro
           mingw32-make
 
-      - name: Find executable
-        id: findexe
+      - name: Package application
         shell: powershell
         run: |
-          $exe = Get-ChildItem -Recurse -Filter *.exe |
-            Where-Object {
-              $_.Name -notmatch "assistant|designer|linguist|qmake|moc|uic|rcc"
-            } |
-            Select-Object -First 1
+          $QtRoot = Split-Path (Split-Path $env:Qt5_DIR)
 
-          if (-not $exe) {
-            throw "Executable not found."
+          Write-Host "Qt root: $QtRoot"
+
+          $Package = "package"
+          New-Item -ItemType Directory -Force $Package | Out-Null
+          New-Item -ItemType Directory -Force "$Package\platforms" | Out-Null
+
+          # Find executable
+          $Exe = Get-ChildItem -Recurse -Filter *.exe |
+              Where-Object {
+                  $_.Name -notmatch "assistant|designer|linguist|qmake|uic|moc|rcc"
+              } |
+              Select-Object -First 1
+
+          if (-not $Exe) {
+              throw "Executable not found."
           }
 
-          "exe=$($exe.FullName)" >> $env:GITHUB_OUTPUT
-          "dir=$($exe.Directory.FullName)" >> $env:GITHUB_OUTPUT
+          Copy-Item $Exe.FullName $Package
 
-      - name: Debug Qt
-        shell: cmd
-        run: |
-          echo Qt5_DIR=%Qt5_DIR%
-          where qmake
-          where windeployqt
-    
-      - name: Deploy Qt
-        shell: powershell
-        run: |
-          windeployqt --release --compiler-runtime `
-            "${{ steps.findexe.outputs.exe }}"
+          # Qt DLLs
+          Copy-Item "$QtRoot\bin\Qt5Core.dll" $Package
+          Copy-Item "$QtRoot\bin\Qt5Gui.dll" $Package
+          Copy-Item "$QtRoot\bin\Qt5Widgets.dll" $Package
+
+          # Platform plugin
+          Copy-Item "$QtRoot\plugins\platforms\qwindows.dll" "$Package\platforms"
+
+          # MinGW runtime DLLs
+          $gcc = Get-Command g++.exe
+
+          $mingwBin = Split-Path $gcc.Source
+
+          Copy-Item "$mingwBin\libstdc++-6.dll" $Package
+          Copy-Item "$mingwBin\libgcc_s_seh-1.dll" $Package
+          Copy-Item "$mingwBin\libwinpthread-1.dll" $Package
 
       - name: Create ZIP
         shell: powershell
         run: |
           Compress-Archive `
-            -Path "${{ steps.findexe.outputs.dir }}\*" `
+            -Path package\* `
             -DestinationPath E34dash-Windows.zip `
             -Force
 
