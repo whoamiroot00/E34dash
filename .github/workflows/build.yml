@@ -22,8 +22,7 @@ jobs:
       - name: Build
         shell: cmd
         run: |
-          cd E34dash
-          qmake E34dash.pro
+          qmake dashmaster.pro
           mingw32-make
 
       - name: Upload executable
@@ -31,4 +30,4 @@ jobs:
         with:
           name: E34dash
           path: |
-            E34dash/**/*.exe
+            **/*.exe
