@@ -45,6 +45,7 @@ jobs:
       - name: Deploy Qt
         shell: powershell
         run: |
+          call "%Qt5_DIR%\bin\qtenv2.bat"
           windeployqt `
             --release `
             --compiler-runtime `
